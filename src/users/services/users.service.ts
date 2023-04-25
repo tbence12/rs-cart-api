@@ -1,28 +1,52 @@
 import { Injectable } from '@nestjs/common';
+import { User } from '../../models';
+import { poolQuery } from '../../database/db';
 
-import { v4 } from 'uuid';
-
-import { User } from '../models';
+const SELECT_ALL_FROM_USER = 'SELECT * FROM "user"';
+const SELECT_FROM_USER = 'SELECT * FROM "user" WHERE id=$1';
+const INSERT_INTO_USER = 'INSERT INTO "user" (username) VALUES ($1) RETURNING *';
+const DELETE_FROM_USER = 'DELETE FROM "user" WHERE id=$1 RETURNING *';
 
 @Injectable()
 export class UsersService {
-  private readonly users: Record<string, User>;
+  async getUsers(): Promise<User[]> {
+    try {
+      const users = await poolQuery(SELECT_ALL_FROM_USER, []);
 
-  constructor() {
-    this.users = {}
+      return users.rows;
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  findOne(userId: string): User {
-    return this.users[ userId ];
+  async createOne({ username }: User): Promise<User> {
+    try {
+      const values = [username];
+      const newUser = await poolQuery(INSERT_INTO_USER, values);
+  
+      return newUser.rows;
+    }  catch (error) {
+      console.error(error);
+    }
   }
 
-  createOne({ name, password }: User): User {
-    const id = v4(v4());
-    const newUser = { id: name || id, name, password };
-
-    this.users[ id ] = newUser;
-
-    return newUser;
+  async findOne(id: string): Promise<User> {
+    try {
+      const userById = await poolQuery(SELECT_FROM_USER, [id]);
+      
+      return userById.rows
+    } catch (error) {
+      console.error(error);
+    }
   }
 
+  async removeUser(id: string) {
+    try {
+      const deletedUser = await poolQuery(DELETE_FROM_USER, [id]);
+  
+      return deletedUser.rows;
+    }  catch (error) {
+      console.error(error);
+    }
+  }
 }
